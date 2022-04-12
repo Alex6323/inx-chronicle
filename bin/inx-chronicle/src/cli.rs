@@ -3,11 +3,11 @@
 
 use clap::Parser;
 
-/// Chronicle permanode storage as an INX plugin
+/// Chronicle permanode storage as an INX plugin.
 #[derive(Parser, Debug)]
 #[clap(author, version, about)]
 pub struct CliArgs {
-    /// Location of the configuration file
+    /// Location of the configuration file.
     #[clap(short, long)]
     pub config: Option<String>,
 }

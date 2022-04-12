@@ -23,7 +23,7 @@ pub struct Config {
 }
 
 impl Config {
-    pub fn from_file<P: AsRef<Path>>(path: P) -> Result<Self, ConfigError> {
+    pub fn from_file(path: impl AsRef<Path>) -> Result<Self, ConfigError> {
         fs::read_to_string(&path)
             .map_err(ConfigError::FileRead)
             .and_then(|contents| toml::from_str::<Self>(&contents).map_err(ConfigError::TomlDeserialization))
@@ -36,7 +36,7 @@ mod test {
 
     #[test]
     fn config_file_conformity() -> Result<(), ConfigError> {
-        let _ = Config::from_file(concat!(env!("CARGO_MANIFEST_DIR"), "/config.toml"))?;
+        let _ = Config::from_file(concat!(env!("CARGO_MANIFEST_DIR"), "/bin/inx-chronicle/config.template.toml"))?;
 
         Ok(())
     }
