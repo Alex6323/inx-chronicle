@@ -19,7 +19,7 @@ name = "inx-chronicle"
 path = "bin/inx-chronicle/src/main.rs"
 
 [dependencies]
-clap = { version = "3.1.8", default-features = false, features = [ "derive", "std" ] }
+clap = { version = "3.1.9", default-features = false, features = [ "derive", "std" ] }
 dotenv = { version = "0.15", default-features = false }
 env_logger = { version = "0.9", default-features = false, features = ["termcolor", "atty", "humantime"] }
 futures = { version = "0.3.21", default-features = false }
