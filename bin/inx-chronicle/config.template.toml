@@ -13,7 +13,7 @@ sync_back_delta = 10000
 sync_back_index = 0
 
 [inx.collector]
-num_solidifiers = 10
+solidifier_count = 10
 
 [api]
 port = 9092

@@ -5,11 +5,15 @@ use std::time::Instant;
 
 use async_trait::async_trait;
 use chronicle::{
-    db::{MongoDb, model::stardust::message::{MessageMetadata, MessageRecord}},
+    db::{
+        model::stardust::message::{MessageMetadata, MessageRecord},
+        MongoDb,
+    },
+    dto,
     runtime::{
         actor::{context::ActorContext, event::HandleEvent, Actor},
         error::RuntimeError,
-    }, dto,
+    },
 };
 use inx::{client::InxClient, tonic::Channel};
 use mongodb::bson::document::ValueAccessError;
@@ -56,7 +60,10 @@ mod stardust {
     use chronicle::db::model::sync::SyncRecord;
 
     use super::*;
-    use crate::inx::{collector::stardust::MilestoneState, syncer::{Syncer, NewSyncedMilestone}};
+    use crate::inx::{
+        collector::stardust::MilestoneState,
+        syncer::{NewSyncedMilestone, Syncer},
+    };
 
     #[async_trait]
     impl HandleEvent<MilestoneState> for Solidifier {
@@ -125,6 +132,7 @@ mod stardust {
             //     }
             // }
 
+            let now = Instant::now();
             let mut num_iterations = 0usize;
             'parent: while let Some(current_message_id) = ms_state.process_queue.pop_front() {
                 if ms_state.visited.contains(&current_message_id) {
@@ -133,7 +141,7 @@ mod stardust {
 
                 num_iterations += 1;
 
-                match self.db.get_message(&current_message_id).await? {
+                match self.db.get_message(&current_message_id).await.expect("db.get_message") {
                     Some(msg) => {
                         if let Some(md) = msg.metadata {
                             ms_state.visited.insert(current_message_id);
@@ -145,23 +153,26 @@ mod stardust {
 
                             let parents = msg.message.parents.to_vec();
                             ms_state.process_queue.extend(parents);
-
                         } else {
                             ms_state.process_queue.push_back(current_message_id.clone());
 
                             if let Some(metadata) = read_metadata(&mut self.inx, current_message_id.clone()).await {
-                                self.db.update_message_metadata(&current_message_id, &metadata).await?;
+                                self.db
+                                    .update_message_metadata(&current_message_id, &metadata)
+                                    .await
+                                    .expect("update_message_metadata");
                             }
-
                         }
                     }
                     None => {
                         ms_state.process_queue.push_back(current_message_id.clone());
 
                         if let Some(message) = read_message(&mut self.inx, current_message_id.clone()).await {
-                            self.db.upsert_message_record(&message).await?;
+                            self.db
+                                .upsert_message_record(&message)
+                                .await
+                                .expect("upsert_message_record");
                         }
-
                     }
                 }
             }
@@ -176,7 +187,13 @@ mod stardust {
                 })
                 .await?;
 
-            println!("Solidification iterations: {}", num_iterations);
+            println!(
+                "Solidification of `{}`: iterations: {}; time: {}s",
+                ms_state.milestone_index,
+                num_iterations,
+                now.elapsed().as_secs_f32()
+            );
+
             log::debug!(
                 "Milestone '{}' synced in {}s.",
                 ms_state.milestone_index,
@@ -202,26 +219,22 @@ mod stardust {
     }
 }
 
-
 async fn read_message(inx: &mut InxClient<Channel>, message_id: dto::MessageId) -> Option<MessageRecord> {
     if let (Ok(message), Ok(metadata)) = (
-        inx
-            .read_message(inx::proto::MessageId {
-                id: message_id.0.clone().into(),
-            })
-            .await,
-        inx
-            .read_message_metadata(inx::proto::MessageId {
-                id: message_id.0.into(),
-            })
-            .await,
+        inx.read_message(inx::proto::MessageId {
+            id: message_id.0.clone().into(),
+        })
+        .await,
+        inx.read_message_metadata(inx::proto::MessageId {
+            id: message_id.0.into(),
+        })
+        .await,
     ) {
-
-        let now = Instant::now();
+        // let now = Instant::now();
         let raw = message.into_inner();
         let metadata = metadata.into_inner();
         let message = MessageRecord::try_from((raw, metadata)).unwrap();
-        log::warn!("Created MessageRecord. Took {}s.", now.elapsed().as_secs_f32());
+        // log::warn!("Created MessageRecord. Took {}s.", now.elapsed().as_secs_f32());
 
         Some(message)
     } else {
@@ -229,17 +242,17 @@ async fn read_message(inx: &mut InxClient<Channel>, message_id: dto::MessageId) 
     }
 }
 
-async fn read_metadata(inx: &mut InxClient<Channel>, message_id: dto::MessageId) -> Option<MessageMetadata>{
+async fn read_metadata(inx: &mut InxClient<Channel>, message_id: dto::MessageId) -> Option<MessageMetadata> {
     if let Ok(metadata) = inx
         .read_message_metadata(inx::proto::MessageId {
             id: message_id.0.into(),
         })
         .await
     {
-        let now = Instant::now();
+        // let now = Instant::now();
         let metadata: inx::MessageMetadata = metadata.into_inner().try_into().unwrap();
         let metadata = metadata.into();
-        log::warn!("Created metadata. Took {}s.", now.elapsed().as_secs_f32());
+        // log::warn!("Created metadata. Took {}s.", now.elapsed().as_secs_f32());
 
         Some(metadata)
     } else {

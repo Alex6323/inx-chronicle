@@ -22,7 +22,7 @@ use mongodb::error::ErrorKind;
 use super::{
     collector::{Collector, CollectorError},
     listener::{InxListener, InxListenerError},
-    syncer::{Syncer, NewTargetMilestone},
+    syncer::{NewTargetMilestone, Syncer},
     InxConfig, InxWorkerError,
 };
 
@@ -70,13 +70,20 @@ impl Actor for InxWorker {
         let inx = Inx::connect(&self.config).await?;
         log::info!("Connected to INX.");
 
-        cx.spawn_child(Collector::new(self.db.clone(), inx.clone(), self.config.collector.clone()))
-            .await;
+        cx.spawn_child(Collector::new(
+            self.db.clone(),
+            inx.clone(),
+            self.config.collector.clone(),
+        ))
+        .await;
         cx.spawn_child(InxListener::new(inx.clone())).await;
         cx.spawn_child(Syncer::new(self.db.clone(), self.config.syncer.clone()))
             .await;
 
-        Ok(InxWorkerState { inx, syncer_started: false } )
+        Ok(InxWorkerState {
+            inx,
+            syncer_started: false,
+        })
     }
 }
 
@@ -97,8 +104,12 @@ impl HandleEvent<Report<Collector>> for InxWorker {
                     CollectorError::MongoDb(e) => match e.kind.as_ref() {
                         // Only a few possible errors we could potentially recover from
                         ErrorKind::Io(_) | ErrorKind::ServerSelection { message: _, .. } => {
-                            cx.spawn_child(Collector::new(self.db.clone(), state.inx.clone(), self.config.collector.clone()))
-                                .await;
+                            cx.spawn_child(Collector::new(
+                                self.db.clone(),
+                                state.inx.clone(),
+                                self.config.collector.clone(),
+                            ))
+                            .await;
                         }
                         _ => {
                             cx.shutdown();
@@ -200,7 +211,9 @@ impl HandleEvent<NewMilestone> for InxWorker {
     ) -> Result<(), Self::Error> {
         println!("Received new milestone {}", milestone_index);
         if !state.syncer_started {
-            cx.addr::<Syncer>().await.send(NewTargetMilestone(milestone_index.max(1) - 1))?;
+            cx.addr::<Syncer>()
+                .await
+                .send(NewTargetMilestone(milestone_index.max(1) - 1))?;
             state.syncer_started = true;
         }
         Ok(())
@@ -250,7 +263,8 @@ pub mod stardust {
             state: &mut Self::State,
         ) -> Result<(), Self::Error> {
             let now = Instant::now();
-            let node_status: NodeStatus = state.inx
+            let node_status: NodeStatus = state
+                .inx
                 .read_node_status(NoParams {})
                 .await?
                 .into_inner()
@@ -287,7 +301,8 @@ pub mod stardust {
             state: &mut Self::State,
         ) -> Result<(), Self::Error> {
             let now = Instant::now();
-            if let Ok(milestone) = state.inx
+            if let Ok(milestone) = state
+                .inx
                 .read_milestone(inx::proto::MilestoneRequest {
                     milestone_index: *milestone_index,
                     milestone_id: None,
@@ -324,12 +339,14 @@ pub mod stardust {
                 InxRequest::Message(message_id, solidifier_addr, mut ms_state) => {
                     let now = Instant::now();
                     match (
-                        state.inx
+                        state
+                            .inx
                             .read_message(inx::proto::MessageId {
                                 id: message_id.0.clone().into(),
                             })
                             .await,
-                        state.inx
+                        state
+                            .inx
                             .read_message_metadata(inx::proto::MessageId {
                                 id: message_id.0.into(),
                             })
@@ -361,7 +378,8 @@ pub mod stardust {
                 }
                 InxRequest::Metadata(message_id, solidifier_addr, ms_state) => {
                     let now = Instant::now();
-                    if let Ok(metadata) = state.inx
+                    if let Ok(metadata) = state
+                        .inx
                         .read_message_metadata(inx::proto::MessageId {
                             id: message_id.0.into(),
                         })

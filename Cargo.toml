@@ -19,6 +19,10 @@ path = "src/lib.rs"
 name = "inx-chronicle"
 path = "bin/inx-chronicle/src/main.rs"
 
+[[bin]]
+name = "test-syncer"
+path = "bin/test-syncer/src/main.rs"
+
 [dependencies]
 
 # Required

@@ -191,7 +191,7 @@ impl HandleEvent<NewTargetMilestone> for Syncer {
         NewTargetMilestone(new_target_ms_index): NewTargetMilestone,
         syncer_state: &mut Self::State,
     ) -> Result<(), Self::Error> {
-        log::trace!("New target milestone '{}'", new_target_ms_index);
+        log::info!("New target milestone '{}'", new_target_ms_index);
 
         if syncer_state.target_ms_index == 0 {
             // Set the target to the first synced milestone that was not requested by the Syncer.

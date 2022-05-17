@@ -127,8 +127,10 @@ pub mod stardust {
     };
 
     use super::*;
-    use crate::inx::syncer::Syncer;
-    use crate::inx::worker::{InxWorker, NewMilestone};
+    use crate::inx::{
+        syncer::Syncer,
+        worker::{InxWorker, NewMilestone},
+    };
 
     #[derive(Debug)]
     pub struct MilestoneState {
