@@ -3,8 +3,8 @@
 
 use std::{collections::{VecDeque, HashSet, HashMap}, time::Instant, sync::Arc};
 
-// use chronicle::db::MongoDb;
-use self::MongoDbDummy as MongoDb;
+use chronicle::db::MongoDb;
+// use self::MongoDbDummy as MongoDb;
 
 use chronicle::{db::{MongoDbConfig, model::{status::Status, stardust::{message::{MessageRecord, MessageMetadata}, milestone::MilestoneRecord}, sync::SyncRecord}}, dto};
 use inx::{client::InxClient, tonic::Channel, proto::NoParams, NodeStatus};
@@ -14,7 +14,7 @@ use tokio::sync::Mutex;
 async fn main() -> Result<(), Box<dyn std::error::Error>> {
     println!("Connecting MongoDb...");
 
-    let username = "mongo-admin";
+    let username = "admin";
     let password = "motdepasse";
     let mongodb_connect_url = "mongodb://localhost:27017";
     let mongodb_config = MongoDbConfig::new()
@@ -29,7 +29,8 @@ async fn main() -> Result<(), Box<dyn std::error::Error>> {
         println!("No node status has been found in the database, it seems like the database is empty.");
     };
 
-    let inx_connect_url = "http://116.203.35.39:9029";
+    // let inx_connect_url = "http://116.203.35.39:9029";
+    let inx_connect_url = "http://localhost:9029";
     println!("Connecting node via INX at bind address `{}`.", inx_connect_url);
     let mut inx = Inx::connect(inx_connect_url.to_string()).await?;
 
