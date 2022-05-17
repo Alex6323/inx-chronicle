@@ -14,7 +14,7 @@ use time::OffsetDateTime;
 use crate::{db::MongoDb, dto};
 
 /// A milestone's metadata.
-#[derive(Serialize, Deserialize)]
+#[derive(Clone, Serialize, Deserialize)]
 pub struct MilestoneRecord {
     /// The milestone index.
     pub milestone_index: u32,

@@ -1,10 +1,14 @@
 // Copyright 2022 IOTA Stiftung
 // SPDX-License-Identifier: Apache-2.0
 
-use std::{collections::{VecDeque, HashSet}, time::Instant};
+use std::{collections::{VecDeque, HashSet, HashMap}, time::Instant, sync::Arc};
 
-use chronicle::{db::{MongoDb, MongoDbConfig, model::{stardust::message::{MessageRecord, MessageMetadata}, sync::SyncRecord}}, dto};
+// use chronicle::db::MongoDb;
+use self::MongoDbDummy as MongoDb;
+
+use chronicle::{db::{MongoDbConfig, model::{status::Status, stardust::{message::{MessageRecord, MessageMetadata}, milestone::MilestoneRecord}, sync::SyncRecord}}, dto};
 use inx::{client::InxClient, tonic::Channel, proto::NoParams, NodeStatus};
+use tokio::sync::Mutex;
 
 #[tokio::main]
 async fn main() -> Result<(), Box<dyn std::error::Error>> {
@@ -123,6 +127,7 @@ impl Solidifier {
         let mut num_update_md = 0usize;
         let mut num_upsert_msg = 0usize;
 
+        let while_let_now = Instant::now();
         while let Some(current_message_id) = ms_state.process_queue.pop_front() {
             if ms_state.visited.contains(&current_message_id) {
                 num_visited += 1;
@@ -131,8 +136,10 @@ impl Solidifier {
 
             num_not_visited += 1;
 
+            // let get_message_now = Instant::now();
             match self.db.get_message(&current_message_id).await.expect("db.get_message") {
                 Some(msg) => {
+                    // println!("db.get_message ~> Some {}s", get_message_now.elapsed().as_secs_f32());
                     if let Some(md) = msg.metadata {
                         ms_state.visited.insert(current_message_id);
 
@@ -151,10 +158,11 @@ impl Solidifier {
                                 .expect("update_message_metadata");
 
                             num_update_md += 1;
-                            ms_state.process_queue.push_back(current_message_id.clone());
+                            ms_state.process_queue.push_back(current_message_id);
                     }
                 }
                 None => {
+                    // println!("db.get_message ~> None {}s", get_message_now.elapsed().as_secs_f32());
                     if let Some(message) = read_message(&mut self.inx, current_message_id.clone()).await {
                         self.db
                             .upsert_message_record(&message)
@@ -162,11 +170,12 @@ impl Solidifier {
                             .expect("upsert_message_record");
 
                         num_upsert_msg += 1;
-                        ms_state.process_queue.push_back(current_message_id.clone());
+                        ms_state.process_queue.push_back(current_message_id);
                     }
                 }
             }
         }
+        println!("while let {}s", while_let_now.elapsed().as_secs_f32());
 
         // If we finished all the parents, that means we have a complete milestone
         // so we should mark it synced
@@ -182,7 +191,7 @@ impl Solidifier {
             num_visited: {num_visited}, 
             num_not_visited: {num_not_visited},
             num_previous_ms: {num_previous_ms},
-            num_update_ms: {num_update_md},
+            num_update_md: {num_update_md},
             num_upsert_msg: {num_upsert_msg}",
         );
 
@@ -251,5 +260,50 @@ async fn read_metadata(inx: &mut InxClient<Channel>, message_id: dto::MessageId)
         Some(metadata)
     } else {
         None
+    }
+}
+
+#[derive(Clone, Default)]
+struct MongoDbDummy {
+    messages: Arc<Mutex<HashMap<dto::MessageId, MessageRecord>>>,
+    metadata: Arc<Mutex<HashMap<dto::MessageId, MessageMetadata>>>,
+    milestones: Arc<Mutex<HashMap<dto::MilestoneIndex, MilestoneRecord>>>,
+    sync_records: Arc<Mutex<HashMap<dto::MilestoneIndex, SyncRecord>>>,
+}
+
+impl MongoDbDummy {
+    async fn connect(_config: &MongoDbConfig) -> Result<MongoDbDummy, Box<dyn std::error::Error>> {
+        Ok(MongoDbDummy::default())
+    }
+
+    async fn status(&self) -> Result<Option<Status>, Box<dyn std::error::Error>> {
+        Ok(None)
+    }
+
+    async fn get_message(&self, message_id: &dto::MessageId) -> Result<Option<MessageRecord>, Box<dyn std::error::Error>> {
+        Ok(self.messages.lock().await.get(message_id).cloned())
+    }
+
+    async fn upsert_milestone_record(&self, milestone: &MilestoneRecord) -> Result<(), Box<dyn std::error::Error>> {
+        let milestone_index = milestone.milestone_index;
+        self.milestones.lock().await.insert(milestone_index, milestone.clone());
+        Ok(())
+    }
+
+    async fn upsert_sync_record(&self, sync_record: &SyncRecord)  -> Result<(), Box<dyn std::error::Error>> {
+        let milestone_index = sync_record.milestone_index;
+        self.sync_records.lock().await.insert(milestone_index, sync_record.clone());
+        Ok(())
+    }
+
+    async fn upsert_message_record(&self, message: &MessageRecord) -> Result<(), Box<dyn std::error::Error>> {
+        let message_id = &message.message.id;
+        self.messages.lock().await.insert(message_id.clone(), message.clone());
+        Ok(())
+    }
+    
+    async fn update_message_metadata(&self, message_id: &dto::MessageId, metadata: &MessageMetadata) -> Result<(), Box<dyn std::error::Error>> {
+        self.metadata.lock().await.insert(message_id.clone(), metadata.clone());
+        Ok(())
     }
 }
