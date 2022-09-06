@@ -41,6 +41,8 @@ pub struct MilestoneDocument {
     at: MilestoneIndexTimestamp,
     /// The milestone's payload.
     payload: MilestonePayload,
+    /// The milestone stats.
+    stats: MilestoneStats,
 }
 
 /// The stardust milestones collection.
@@ -68,6 +70,27 @@ pub struct SyncData {
     pub completed: Vec<RangeInclusive<MilestoneIndex>>,
     /// Gaps/missings milestones data
     pub gaps: Vec<RangeInclusive<MilestoneIndex>>,
+}
+
+/// The milestone's details (number of referenced blocks, ledger mutations etc.).
+#[derive(Clone, Debug, Default, Serialize, Deserialize)]
+pub struct MilestoneStats {
+    /// The number of blocks referenced by a milestone.
+    pub num_blocks: u32,
+    /// The number of blocks referenced by a milestone that contain no payload.
+    pub num_no_payload: u32,
+    /// The number of blocks referenced by a milestone that contain a payload.
+    pub num_tx_payload: u32,
+    /// The number of blocks containing a treasury transaction payload.
+    pub num_treasury_tx_payload: u32,
+    /// The number of blocks containing a tagged data payload.
+    pub num_tagged_data_payload: u32,
+    /// The number of blocks containing a milestone payload.
+    pub num_milestone_payload: u32,
+    /// The number of blocks containing a confirmed transaction.
+    pub num_confirmed: u32,
+    /// The number of blocks containing a conflicting transaction.
+    pub num_conflicting: u32,
 }
 
 impl MilestoneCollection {
@@ -154,6 +177,20 @@ impl MilestoneCollection {
             .map(|ts| ts.milestone_id))
     }
 
+    /// Gets the [`MilestoneStats`] of a milestone.
+    pub async fn get_milestone_stats(&self, milestone_id: &MilestoneId) -> Result<Option<MilestoneStats>, Error> {
+        self.aggregate(
+            vec![
+                doc! { "$match": { "_id": milestone_id } },
+                doc! { "$replaceWith": "$stats" },
+            ],
+            None,
+        )
+        .await?
+        .try_next()
+        .await
+    }
+
     /// Inserts the information of a milestone into the database.
     #[instrument(skip(self, milestone_id, milestone_timestamp, payload), err, level = "trace")]
     pub async fn insert_milestone(
@@ -162,6 +199,7 @@ impl MilestoneCollection {
         milestone_index: MilestoneIndex,
         milestone_timestamp: MilestoneTimestamp,
         payload: MilestonePayload,
+        details: MilestoneStats,
     ) -> Result<(), Error> {
         let milestone_document = MilestoneDocument {
             at: MilestoneIndexTimestamp {
@@ -170,6 +208,7 @@ impl MilestoneCollection {
             },
             milestone_id,
             payload,
+            stats: details,
         };
 
         self.insert_one(milestone_document, None).await?;

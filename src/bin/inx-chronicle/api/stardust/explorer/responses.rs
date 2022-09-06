@@ -92,3 +92,24 @@ pub struct BlockChildrenResponse {
 }
 
 impl_success_response!(BlockChildrenResponse);
+
+/// Response of GET /api/explorer/v2/ledger/stats/by-milestone/{milestone_id}.
+/// Returns the stats of a specific milestone.
+#[derive(Clone, Debug, Eq, PartialEq, Serialize, Deserialize)]
+#[serde(rename_all = "camelCase")]
+pub struct MilestoneStatsResponse {
+    pub blocks: usize,
+    pub per_payload_type: MilestoneStatsPerPayloadType,
+}
+
+#[derive(Clone, Debug, Eq, PartialEq, Serialize, Deserialize)]
+#[serde(rename_all = "camelCase")]
+pub struct MilestoneStatsPerPayloadType {
+    pub no_payload: usize,
+    pub txs_confirmed: usize,
+    pub txs_conflicting: usize,
+    pub tagged_data: usize,
+    pub milestone: usize,
+}
+
+impl_success_response!(MilestoneStatsResponse);

@@ -19,7 +19,7 @@ pub use self::{
     ledger_update::{
         LedgerUpdateByAddressRecord, LedgerUpdateByMilestoneRecord, LedgerUpdateCollection, ParseSortError, SortOrder,
     },
-    milestone::{MilestoneCollection, SyncData},
+    milestone::{MilestoneCollection, MilestoneStats, SyncData},
     outputs::{
         AddressStat, AliasOutputsQuery, BasicOutputsQuery, DistributionStat, FoundryOutputsQuery, IndexedId,
         NftOutputsQuery, OutputCollection, OutputMetadataResult, OutputWithMetadataResult, OutputsResult,
