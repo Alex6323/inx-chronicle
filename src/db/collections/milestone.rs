@@ -199,7 +199,7 @@ impl MilestoneCollection {
         milestone_index: MilestoneIndex,
         milestone_timestamp: MilestoneTimestamp,
         payload: MilestonePayload,
-        details: MilestoneStats,
+        stats: MilestoneStats,
     ) -> Result<(), Error> {
         let milestone_document = MilestoneDocument {
             at: MilestoneIndexTimestamp {
@@ -208,7 +208,7 @@ impl MilestoneCollection {
             },
             milestone_id,
             payload,
-            stats: details,
+            stats,
         };
 
         self.insert_one(milestone_document, None).await?;
