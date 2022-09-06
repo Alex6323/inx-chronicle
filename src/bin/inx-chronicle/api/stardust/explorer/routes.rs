@@ -20,7 +20,7 @@ use super::{
     },
     responses::{
         BalanceResponse, BlockChildrenResponse, LedgerUpdatesByAddressResponse, LedgerUpdatesByMilestoneResponse,
-        MilestoneStatsPerPayloadType, MilestoneStatsResponse,
+        MilestoneStatsPerPayloadTypeDto, MilestoneStatsResponse,
     },
 };
 use crate::api::{extractors::Pagination, ApiError, ApiResult};
@@ -144,7 +144,7 @@ async fn milestone_stats(
 
     Ok(MilestoneStatsResponse {
         blocks: stats.num_blocks as usize,
-        per_payload_type: MilestoneStatsPerPayloadType {
+        per_payload_type: MilestoneStatsPerPayloadTypeDto {
             no_payload: stats.num_no_payload as usize,
             txs_confirmed: stats.num_confirmed as usize,
             txs_conflicting: stats.num_conflicting as usize,
