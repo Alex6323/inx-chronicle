@@ -19,7 +19,7 @@ use chronicle::{
     runtime::{Actor, ActorContext, HandleEvent},
     types::{
         ledger::{BlockMetadata, LedgerInclusionState, LedgerOutput, LedgerSpent, MilestoneIndexTimestamp},
-        stardust::block::{Block, BlockId, Payload},
+        stardust::block::{Block, BlockId, Payload, payload::MilestoneId},
         tangle::{MilestoneIndex, ProtocolParameters},
     },
 };
@@ -340,11 +340,14 @@ async fn handle_milestone(
     let milestone_index: MilestoneIndex = milestone.milestone_info.milestone_index.into();
 
     let milestone_timestamp = milestone.milestone_info.milestone_timestamp.into();
-    let milestone_id = milestone
+    let milestone_id: MilestoneId = milestone
         .milestone_info
         .milestone_id
         .ok_or(InxError::MissingMilestoneInfo(milestone_index))?
         .into();
+
+    println!("Milestone Id: {}", milestone_id.to_hex());
+
     let payload = Into::into(
         &milestone
             .milestone
