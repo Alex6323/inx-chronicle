@@ -10,7 +10,7 @@ mod test_rand {
     use chronicle::{
         db::{
             collections::{BlockCollection, OutputCollection},
-            MongoDb,
+            MongoDb, MongoDbCollection,
         },
         types::{
             ledger::{BlockMetadata, ConflictReason, LedgerInclusionState, LedgerOutput, MilestoneIndexTimestamp},
@@ -154,7 +154,7 @@ mod test_rand {
             .collect::<Vec<_>>();
 
         collection.insert_blocks_with_metadata(blocks.clone()).await.unwrap();
-        assert_eq!(collection.len().await.unwrap(), 10);
+        assert_eq!(collection.collection().count_documents(None, None).await.unwrap(), 10);
 
         let mut s = collection.get_block_children(&parents[0], 100, 0).await.unwrap();
 
