@@ -238,13 +238,21 @@ impl BlockCollection {
                 //     "$$REMOVE",
                 //     "$block.payload",
                 // ] } } },
-                doc! { "$replaceWith": "$block" },
+                // doc! { "$replaceWith": "$block" },
             ],
             None,
         )
         .await?
         .try_next()
         .await
+        .map(|block: Option<BlockDocument>| {
+            if let Some(block_doc) = block {
+                println!("{}", block_doc.block_id.to_hex());
+                Some(block_doc.block)
+            } else {
+                None
+            }
+        })
     }
 
     /// Gets the spending transaction of an [`Output`](crate::types::stardust::block::Output) by [`OutputId`].
