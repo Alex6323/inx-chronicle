@@ -221,15 +221,15 @@ impl BlockCollection {
                     "metadata.inclusion_state": LedgerInclusionState::Included,
                     "block.payload.transaction_id": transaction_id,
                 } },
-                // doc! { "$lookup": {
-                //     "from": OutputCollection::NAME,
-                //     "localField": "_id",
-                //     "foreignField": "metadata.block_id",
-                //     "pipeline": [
-                //         { "$replaceWith": "$output" }
-                //     ],
-                //     "as": "block.payload.essence.outputs"
-                // } },
+                doc! { "$lookup": {
+                    "from": OutputCollection::NAME,
+                    "localField": "_id",
+                    "foreignField": "metadata.block_id",
+                    "pipeline": [
+                        { "$replaceWith": "$output" }
+                    ],
+                    "as": "block.payload.essence.outputs"
+                } },
                 // // Stupidly, if the block has no payload, then the above lookup
                 // // will add the structure, causing the deserialization to fail.
                 // // So this is needed to make sure we remove it if necessary.
