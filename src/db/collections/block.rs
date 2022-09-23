@@ -94,16 +94,6 @@ impl BlockCollection {
         Ok(())
     }
 
-    // /// Gets the length of the collection.
-    // pub async fn len(&self) -> Result<usize, Error> {
-    //     Ok(self
-    //         .find(doc! {}, None)
-    //         .await?
-    //         .try_collect::<Vec<BlockDocument>>()
-    //         .await?
-    //         .len())
-    // }
-
     /// Get a [`Block`] by its [`BlockId`].
     pub async fn get_block(&self, block_id: &BlockId) -> Result<Option<Block>, Error> {
         self.aggregate(
@@ -231,23 +221,23 @@ impl BlockCollection {
                     "metadata.inclusion_state": LedgerInclusionState::Included,
                     "block.payload.transaction_id": transaction_id,
                 } },
-                doc! { "$lookup": {
-                    "from": OutputCollection::NAME,
-                    "localField": "_id",
-                    "foreignField": "metadata.block_id",
-                    "pipeline": [
-                        { "$replaceWith": "$output" }
-                    ],
-                    "as": "block.payload.essence.outputs"
-                } },
-                // Stupidly, if the block has no payload, then the above lookup
-                // will add the structure, causing the deserialization to fail.
-                // So this is needed to make sure we remove it if necessary.
-                doc! { "$set": { "block.payload": { "$cond": [
-                    { "$not": [ "$block.payload.kind" ] },
-                    "$$REMOVE",
-                    "$block.payload",
-                ] } } },
+                // doc! { "$lookup": {
+                //     "from": OutputCollection::NAME,
+                //     "localField": "_id",
+                //     "foreignField": "metadata.block_id",
+                //     "pipeline": [
+                //         { "$replaceWith": "$output" }
+                //     ],
+                //     "as": "block.payload.essence.outputs"
+                // } },
+                // // Stupidly, if the block has no payload, then the above lookup
+                // // will add the structure, causing the deserialization to fail.
+                // // So this is needed to make sure we remove it if necessary.
+                // doc! { "$set": { "block.payload": { "$cond": [
+                //     { "$not": [ "$block.payload.kind" ] },
+                //     "$$REMOVE",
+                //     "$block.payload",
+                // ] } } },
                 doc! { "$replaceWith": "$block" },
             ],
             None,
