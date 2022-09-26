@@ -86,6 +86,7 @@ bee-block-stardust = { package = "bee-block", version = "1.0.0-beta.7", git = "h
 
 [dev-dependencies]
 rand = { version = "0.8", default-features = false, features = [ "std" ] }
+bee-block-stardust = { package = "bee-block", version = "1.0.0-beta.7", git = "https://github.com/iotaledger/bee.git", branch = "shimmer-develop", default-features = false, features = [ "rand" ] }
 
 [features]
 default = [ 
