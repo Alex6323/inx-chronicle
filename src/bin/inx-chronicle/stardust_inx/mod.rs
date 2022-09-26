@@ -345,7 +345,10 @@ async fn update_spent_outputs(db: &MongoDb, outputs: Vec<LedgerSpent>) -> Result
 #[instrument(skip_all, level = "trace")]
 async fn handle_milestone(db: &MongoDb, inx: &mut Inx, milestone_index: MilestoneIndex) -> Result<(), InxError> {
     let milestone = match inx.read_milestone(milestone_index.0.into()).await {
-        Ok(milestone) => milestone,
+        Ok(milestone) => {
+            println!("MILESTONE OK");     
+            milestone 
+        },
         Err(e) => {
             println!("HERE IT HAPPENED: {e}");
             panic!("NOOOOO");
@@ -360,7 +363,16 @@ async fn handle_milestone(db: &MongoDb, inx: &mut Inx, milestone_index: Mileston
         .milestone_id
         .ok_or(InxError::MissingMilestoneInfo(milestone_index))?
         .into();
-    let payload = Into::into(&milestone.milestone.inner_unverified()?);
+
+    let milestone_payload = match milestone.milestone.inner_unverified() {
+        Ok(payload) => payload,
+        Err(e) => {
+            panic!("NOOO {e}");
+        }
+    };
+
+    // let payload = Into::into(&milestone.milestone.inner_unverified()?);
+    let payload = Into::into(&milestone_payload);
 
     db.collection::<MilestoneCollection>()
         .insert_milestone(milestone_id, milestone_index, milestone_timestamp, payload)
