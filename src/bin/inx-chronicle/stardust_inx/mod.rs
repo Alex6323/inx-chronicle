@@ -364,6 +364,9 @@ async fn handle_milestone(db: &MongoDb, inx: &mut Inx, milestone_index: Mileston
         .ok_or(InxError::MissingMilestoneInfo(milestone_index))?
         .into();
 
+    // println!("{}", type_name(T));
+    println!("{:#?}", milestone.milestone);
+
     let milestone_payload = match milestone.milestone.inner_unverified() {
         Ok(payload) => payload,
         Err(e) => {
