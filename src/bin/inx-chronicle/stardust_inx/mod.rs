@@ -344,7 +344,13 @@ async fn update_spent_outputs(db: &MongoDb, outputs: Vec<LedgerSpent>) -> Result
 
 #[instrument(skip_all, level = "trace")]
 async fn handle_milestone(db: &MongoDb, inx: &mut Inx, milestone_index: MilestoneIndex) -> Result<(), InxError> {
-    let milestone = inx.read_milestone(milestone_index.0.into()).await?;
+    let milestone = match inx.read_milestone(milestone_index.0.into()).await {
+        Ok(milestone) => milestone,
+        Err(e) => {
+            println!("HERE IT HAPPENED: {e}");
+            panic!("NOOOOO");
+        }
+    };
 
     let milestone_index: MilestoneIndex = milestone.milestone_info.milestone_index.into();
 
