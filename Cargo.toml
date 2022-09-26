@@ -82,10 +82,9 @@ tracing-opentelemetry = { version = "0.18", default-features = false, features =
 
 # Stardust types
 bee-api-types-stardust = { package = "bee-api-types", version = "1.0.0-beta.7", git = "https://github.com/iotaledger/bee.git", branch = "shimmer-develop", default-features = false, features = ["axum"], optional = true }
-bee-block-stardust = { package = "bee-block", version = "1.0.0-beta.7", git = "https://github.com/iotaledger/bee.git", branch = "shimmer-develop", default-features = false, features = [ "dto", "std", "serde" ], optional = true }
+bee-block-stardust = { package = "bee-block", version = "1.0.0-beta.7", git = "https://github.com/iotaledger/bee.git", branch = "shimmer-develop", default-features = false, features = [ "dto", "std", "rand", "serde"], optional = true }
 
 [dev-dependencies]
-bee-block-stardust = { package = "bee-block", version = "1.0.0-beta.7", git = "https://github.com/iotaledger/bee.git", branch = "shimmer-develop", default-features = false, features = [ "rand" ] }
 rand = { version = "0.8", default-features = false, features = [ "std" ] }
 
 [features]
