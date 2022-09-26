@@ -260,7 +260,8 @@ impl HandleEvent<Result<LedgerUpdateRecord, InxError>> for InxWorker {
             .read_protocol_parameters(ledger_update.milestone_index.0.into())
             .await?
             .params
-            .inner(&())?;
+            // .inner(&())?;
+            .inner_unverified()?;
 
         insert_unspent_outputs(
             &self.db,
