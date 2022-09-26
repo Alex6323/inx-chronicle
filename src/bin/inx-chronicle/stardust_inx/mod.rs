@@ -342,11 +342,7 @@ async fn update_spent_outputs(db: &MongoDb, outputs: Vec<LedgerSpent>) -> Result
 }
 
 #[instrument(skip_all, level = "trace")]
-async fn handle_milestone(
-    db: &MongoDb,
-    inx: &mut Inx,
-    milestone_index: MilestoneIndex,
-) -> Result<(), InxError> {
+async fn handle_milestone(db: &MongoDb, inx: &mut Inx, milestone_index: MilestoneIndex) -> Result<(), InxError> {
     let milestone = inx.read_milestone(milestone_index.0.into()).await?;
 
     let milestone_index: MilestoneIndex = milestone.milestone_info.milestone_index.into();
@@ -374,7 +370,7 @@ async fn handle_cone_stream(
     db: &MongoDb,
     inx: &mut Inx,
     milestone_index: MilestoneIndex,
-    //parameters: &ProtocolParameters,
+    // parameters: &ProtocolParameters,
 ) -> Result<(), InxError> {
     let cone_stream = inx.read_milestone_cone(milestone_index.0.into()).await?;
 
