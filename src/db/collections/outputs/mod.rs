@@ -488,11 +488,14 @@ impl OutputCollection {
                 vec![
                     doc! { "$match": {
                         "output.kind": "nft",
+                        // everything that was booked <= start_index
+                        "metadata.booked.milestone_index": { "$not": { "$gt": start_index } },
                     } },
                     doc! { "$facet": {
+                        // 
                         "start_state": [
                             { "$match": {
-                                "metadata.booked.milestone_index": { "$not": { "$gt": start_index } },
+                                // everything that was not spent yet or spent > start_index
                                 "$or": [
                                     { "metadata.spent_metadata.spent": null },
                                     { "metadata.spent_metadata.spent.milestone_index": { "$not": { "$lte": start_index } } },
@@ -504,7 +507,8 @@ impl OutputCollection {
                         ],
                         "end_state": [
                             { "$match": {
-                                "metadata.booked.milestone_index": { "$not": { "$lte": start_index } },
+                                // everything that was booked > start_index and (not spent yet or spent > end_index)
+                                // "metadata.booked.milestone_index": { "$not": { "$lte": start_index } },
                                 "$or": [
                                     { "metadata.spent_metadata.spent": null },
                                     { "metadata.spent_metadata.spent.milestone_index": { "$not": { "$lte": end_index } } },
@@ -516,8 +520,11 @@ impl OutputCollection {
                         ],
                     } },
                     doc! { "$project": {
+                        // those who remain untouched
                         "created_count": { "$size": { "$setDifference": [ "$end_state", "$start_state" ] } },
+                        // those who show up in both states
                         "transferred_count": { "$size": { "$setIntersection": [ "$start_state", "$end_state" ] } },
+                        // those who disappeared
                         "burned_count": { "$size": { "$setDifference": [ "$start_state", "$end_state" ] } },
                     } },
                 ],
