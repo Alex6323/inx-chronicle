@@ -488,11 +488,11 @@ impl OutputCollection {
                 vec![
                     doc! { "$match": {
                         "output.kind": "nft",
-                        "metadata.booked.milestone_index": { "$not": { "$gt": start_index } },
                     } },
                     doc! { "$facet": {
                         "start_state": [
                             { "$match": {
+                                "metadata.booked.milestone_index": { "$not": { "$gt": start_index } },
                                 "$or": [
                                     { "metadata.spent_metadata.spent": null },
                                     { "metadata.spent_metadata.spent.milestone_index": { "$not": { "$lte": start_index } } },
@@ -540,11 +540,11 @@ impl OutputCollection {
                 vec![
                     doc! { "$match": {
                         "output.kind": "foundry",
-                        "metadata.booked.milestone_index": { "$not": { "$gt": start_index } },
                     } },
                     doc! { "$facet": {
                         "start_state": [
                             { "$match": {
+                                "metadata.booked.milestone_index": { "$not": { "$gt": start_index } },
                                 "$or": [
                                     { "metadata.spent_metadata.spent": null },
                                     { "metadata.spent_metadata.spent.milestone_index": { "$not": { "$lte": start_index } } },
