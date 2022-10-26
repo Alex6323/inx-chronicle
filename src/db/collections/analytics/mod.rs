@@ -26,7 +26,7 @@ use crate::{
 /// Holds analytics about stardust data.
 #[derive(Clone, Debug, Default, Serialize, Deserialize)]
 #[allow(missing_docs)]
-pub struct Analytics {
+pub struct AnalyticsState {
     pub address_activity: AddressActivityAnalytics,
     pub addresses: AddressBalances,
     pub base_token: BaseTokenActivityAnalytics,
@@ -42,7 +42,7 @@ pub struct Analytics {
     pub protocol_params: Option<ProtocolParameters>,
 }
 
-impl Analytics {
+impl AnalyticsState {
     /// Get a processor to update the analytics with new data.
     pub fn processor(mut self) -> AnalyticsProcessor {
         // Only want to accumulate some of the analytics.
@@ -61,11 +61,11 @@ impl Analytics {
 impl MongoDb {
     /// Gets all analytics for a milestone index, fetching the data from the collections.
     #[tracing::instrument(skip(self), err, level = "trace")]
-    pub async fn get_all_analytics(&self, milestone_index: MilestoneIndex) -> Result<Analytics, Error> {
+    pub async fn get_all_analytics(&self, milestone_index: MilestoneIndex) -> Result<AnalyticsState, Error> {
         let output_collection = self.collection::<OutputCollection>();
         let protocol_param_collection = self.collection::<ProtocolUpdateCollection>();
 
-        Ok(Analytics {
+        Ok(AnalyticsState {
             addresses: output_collection.get_address_balances(milestone_index).await?,
             ledger_outputs: output_collection.get_ledger_output_analytics(milestone_index).await?,
             aliases: output_collection.get_alias_output_tracker(milestone_index).await?,
@@ -157,7 +157,7 @@ impl From<AddressBalances> for AddressAnalytics {
 /// A processor for analytics which holds some state.
 #[derive(Clone, Debug, Default, Serialize, Deserialize)]
 pub struct AnalyticsProcessor {
-    analytics: Analytics,
+    analytics: AnalyticsState,
     addresses: HashSet<Address>,
     sending_addresses: HashSet<Address>,
     receiving_addresses: HashSet<Address>,
@@ -377,8 +377,8 @@ impl AnalyticsProcessor {
                 Some(payload) => match payload {
                     Payload::Transaction(_) => self.analytics.payload_activity.transaction_count += 1,
                     Payload::Milestone(_) => self.analytics.payload_activity.milestone_count += 1,
-                    Payload::TreasuryTransaction(_) => self.analytics.payload_activity.treasury_transaction_count += 1,
-                    Payload::TaggedData(_) => self.analytics.payload_activity.tagged_data_count += 1,
+                    Payload::TreasuryTransaction(_) => self.analytics.payload_activity.treasury_transaction_count +=
+        1,             Payload::TaggedData(_) => self.analytics.payload_activity.tagged_data_count += 1,
                 },
                 None => self.analytics.payload_activity.no_payload_count += 1,
             }
@@ -391,7 +391,7 @@ impl AnalyticsProcessor {
     }
 
     /// Complete processing and return the analytics.
-    pub fn finish(mut self) -> Analytics {
+    pub fn finish(mut self) -> AnalyticsState {
         self.analytics.address_activity.total_count = self.addresses.len() as _;
         self.analytics.address_activity.receiving_count = self.receiving_addresses.len() as _;
         self.analytics.address_activity.sending_count = self.sending_addresses.len() as _;
@@ -587,7 +587,7 @@ mod test {
     use decimal::d128;
     use rand::Rng;
 
-    use super::{Analytics, BaseTokenActivityAnalytics};
+    use super::{AnalyticsState, BaseTokenActivityAnalytics};
     use crate::{
         db::collections::analytics::{
             AddressActivityAnalytics, AddressAnalytics, AliasActivityAnalytics, ClaimedTokensAnalytics,
@@ -887,7 +887,7 @@ mod test {
             })
             .collect::<Vec<_>>();
 
-        let mut analytics = Analytics::default().processor();
+        let mut analytics = AnalyticsState::default().processor();
 
         analytics.process_created_outputs(&to_spend_outputs);
         analytics.process_consumed_outputs(&spent_outputs);
@@ -1005,8 +1005,8 @@ mod test {
                     .count() as _,
                 state_changed_count: unspent_outputs
                     .iter()
-                    .filter(|o| matches!(&o.output, Output::Alias(alias) if alias.alias_id == state_changed_alias_id))
-                    .count() as _,
+                    .filter(|o| matches!(&o.output, Output::Alias(alias) if alias.alias_id ==
+state_changed_alias_id))                     .count() as _,
                 destroyed_count: spent_outputs
                     .iter()
                     .filter(|o| matches!(&o.output.output, Output::Alias(alias)
@@ -1020,16 +1020,16 @@ mod test {
             FoundryActivityAnalytics {
                 created_count: unspent_outputs
                     .iter()
-                    .filter(|o| matches!(&o.output, Output::Foundry(foundry) if foundry.foundry_id != transferred_foundry_id))
-                    .count() as _,
+                    .filter(|o| matches!(&o.output, Output::Foundry(foundry) if foundry.foundry_id !=
+transferred_foundry_id))                     .count() as _,
                 transferred_count: unspent_outputs
                     .iter()
-                    .filter(|o| matches!(&o.output, Output::Foundry(foundry) if foundry.foundry_id == transferred_foundry_id))
-                    .count() as _,
+                    .filter(|o| matches!(&o.output, Output::Foundry(foundry) if foundry.foundry_id ==
+transferred_foundry_id))                     .count() as _,
                 destroyed_count: spent_outputs
                     .iter()
-                    .filter(|o| matches!(&o.output.output, Output::Foundry(foundry) if foundry.foundry_id != transferred_foundry_id))
-                    .count() as _,
+                    .filter(|o| matches!(&o.output.output, Output::Foundry(foundry) if foundry.foundry_id !=
+transferred_foundry_id))                     .count() as _,
             }
         );
         assert_eq!(

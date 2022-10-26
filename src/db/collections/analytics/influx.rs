@@ -39,44 +39,44 @@ impl InfluxDb {
         &self,
         milestone_timestamp: MilestoneTimestamp,
         milestone_index: MilestoneIndex,
-        analytics: Analytics,
+        analytics: AnalyticsState,
     ) -> Result<(), influxdb::Error> {
         tokio::try_join!(
             self.insert_analytics(milestone_timestamp, milestone_index, analytics.address_activity),
-            self.insert_analytics(
-                milestone_timestamp,
-                milestone_index,
-                AddressAnalytics::from(analytics.addresses)
-            ),
-            self.insert_analytics(milestone_timestamp, milestone_index, analytics.base_token),
-            self.insert_analytics(milestone_timestamp, milestone_index, analytics.ledger_outputs),
-            self.insert_analytics(
-                milestone_timestamp,
-                milestone_index,
-                AliasActivityAnalytics::from(analytics.aliases)
-            ),
-            self.insert_analytics(
-                milestone_timestamp,
-                milestone_index,
-                FoundryActivityAnalytics::from(analytics.native_tokens)
-            ),
-            self.insert_analytics(
-                milestone_timestamp,
-                milestone_index,
-                NftActivityAnalytics::from(analytics.nfts)
-            ),
-            self.insert_analytics(milestone_timestamp, milestone_index, analytics.storage_deposits),
-            self.insert_analytics(milestone_timestamp, milestone_index, analytics.claimed_tokens),
-            self.insert_analytics(milestone_timestamp, milestone_index, analytics.payload_activity),
-            self.insert_analytics(milestone_timestamp, milestone_index, analytics.unlock_conditions),
-            self.insert_analytics(milestone_timestamp, milestone_index, analytics.transaction_activity),
-            async {
-                if let Some(protocol_params) = analytics.protocol_params {
-                    self.insert_analytics(milestone_timestamp, milestone_index, protocol_params)
-                        .await?;
-                }
-                Ok(())
-            }
+            // self.insert_analytics(
+            //     milestone_timestamp,
+            //     milestone_index,
+            //     AddressAnalytics::from(analytics.addresses)
+            // ),
+            // self.insert_analytics(milestone_timestamp, milestone_index, analytics.base_token),
+            // self.insert_analytics(milestone_timestamp, milestone_index, analytics.ledger_outputs),
+            // self.insert_analytics(
+            //     milestone_timestamp,
+            //     milestone_index,
+            //     AliasActivityAnalytics::from(analytics.aliases)
+            // ),
+            // self.insert_analytics(
+            //     milestone_timestamp,
+            //     milestone_index,
+            //     FoundryActivityAnalytics::from(analytics.native_tokens)
+            // ),
+            // self.insert_analytics(
+            //     milestone_timestamp,
+            //     milestone_index,
+            //     NftActivityAnalytics::from(analytics.nfts)
+            // ),
+            // self.insert_analytics(milestone_timestamp, milestone_index, analytics.storage_deposits),
+            // self.insert_analytics(milestone_timestamp, milestone_index, analytics.claimed_tokens),
+            // self.insert_analytics(milestone_timestamp, milestone_index, analytics.payload_activity),
+            // self.insert_analytics(milestone_timestamp, milestone_index, analytics.unlock_conditions),
+            // self.insert_analytics(milestone_timestamp, milestone_index, analytics.transaction_activity),
+            // async {
+            //     if let Some(protocol_params) = analytics.protocol_params {
+            //         self.insert_analytics(milestone_timestamp, milestone_index, protocol_params)
+            //             .await?;
+            //     }
+            //     Ok(())
+            // }
         )?;
         Ok(())
     }

@@ -9,7 +9,7 @@ use std::sync::Arc;
 use chronicle::{
     db::{
         collections::{
-            Analytics, AnalyticsProcessor, BlockCollection, LedgerUpdateCollection, MilestoneCollection,
+            AnalyticsProcessor, AnalyticsState, BlockCollection, LedgerUpdateCollection, MilestoneCollection,
             OutputCollection, ProtocolUpdateCollection, TreasuryCollection,
         },
         InfluxDb, MongoDb,
@@ -33,7 +33,7 @@ pub const INSERT_BATCH_SIZE: usize = 10000;
 pub struct InxWorker {
     db: MongoDb,
     influx_db: InfluxDb,
-    analytics: Option<Analytics>,
+    analytics: Option<AnalyticsState>,
     config: InxConfig,
 }
 
@@ -239,8 +239,10 @@ impl InxWorker {
             Some(res) => res,
             None => self.db.get_all_analytics(milestone_index - 1).await?,
         };
+        // TEMP
+        let cmp_analytics = self.db.get_all_analytics(milestone_index - 1).await?;
 
-        let analytics = Arc::new(Mutex::new(analytics.processor()));
+        let analytics = Arc::new(Mutex::new((analytics.processor(), cmp_analytics.processor())));
 
         let mut tasks = JoinSet::new();
         let mut actual_created_count = 0;
@@ -261,7 +263,13 @@ impl InxWorker {
                 let db = self.db.clone();
                 let analytics = analytics.clone();
                 tasks.spawn(async move {
-                    analytics.lock().await.process_consumed_outputs(&batch);
+                    let mut analytics = analytics.lock().await;
+                    
+                    (*analytics).0.process_consumed_outputs(&batch);
+                    (*analytics).1.process_consumed_outputs(&batch);
+
+                    drop(analytics);
+
                     update_spent_outputs(&db, &batch).await
                 });
                 Result::<_, InxWorkerError>::Ok(tasks)
@@ -283,7 +291,13 @@ impl InxWorker {
                 let db = self.db.clone();
                 let analytics = analytics.clone();
                 tasks.spawn(async move {
-                    analytics.lock().await.process_created_outputs(&batch);
+                    let mut analytics = analytics.lock().await;
+                    
+                    (*analytics).0.process_created_outputs(&batch);
+                    (*analytics).1.process_created_outputs(&batch);
+
+                    drop(analytics);
+
                     insert_unspent_outputs(&db, &batch).await
                 });
                 Result::<_, InxWorkerError>::Ok(tasks)
@@ -319,17 +333,63 @@ impl InxWorker {
         tracing::Span::current().record("created", created_count);
         tracing::Span::current().record("consumed", consumed_count);
 
-        self.handle_cone_stream(inx, &analytics, milestone_index).await?;
-        self.handle_protocol_params(inx, &analytics, milestone_index).await?;
+        self.handle_cone_stream(inx, &analytics, milestone_index)
+            .await?;
+        self.handle_protocol_params(inx, &analytics, milestone_index)
+            .await?;
+
+        // Panic: Cannot fail as all other references are held by the tasks and we await them above.
+        let (analytics, cmp_analytics) = Arc::try_unwrap(analytics).unwrap().into_inner();
+        let analytics = analytics.finish();
+        let cmp_analytics = cmp_analytics.finish();
+
+        // println!("address activity: {:?}", analytics.address_activity);
+        // println!("balances {:?}", analytics.addresses.balances.len());
+        // println!("base token transferred value {:?}", analytics.base_token.transferred_value);
+        // println!("ledger outputs {:?}", analytics.ledger_outputs);
+        // println!("aliases {:?}", analytics.aliases);
+
+        assert_eq!(analytics.address_activity, cmp_analytics.address_activity);
+        // assert_eq!(analytics.addresses.balances.len(), cmp_analytics.addresses.balances.len());
+
+        assert_eq!(analytics.base_token.transferred_value, cmp_analytics.base_token.transferred_value);
+
+        assert_eq!(analytics.ledger_outputs, cmp_analytics.ledger_outputs);
+
+        assert_eq!(analytics.aliases.created.len(), cmp_analytics.aliases.created.len());
+        // assert_eq!(analytics.aliases.governor_changed.len(), cmp_analytics.aliases.governor_changed.len());
+        // assert_eq!(analytics.aliases.state_changed.len(), cmp_analytics.aliases.state_changed.len());
+        // assert_eq!(analytics.aliases.destroyed.len(), cmp_analytics.aliases.destroyed.len());
+
+        assert_eq!(analytics.native_tokens.created.len(), cmp_analytics.native_tokens.created.len());
+        // assert_eq!(analytics.native_tokens.transferred.len(), cmp_analytics.native_tokens.transferred.len());
+        // assert_eq!(analytics.native_tokens.destroyed.len(), cmp_analytics.native_tokens.destroyed.len());
+
+        assert_eq!(analytics.nfts.created.len(), cmp_analytics.nfts.created.len());
+        // assert_eq!(analytics.nfts.transferred.len(), cmp_analytics.nfts.transferred.len());
+        // assert_eq!(analytics.nfts.destroyed.len(), cmp_analytics.nfts.destroyed.len());
+
+
+        println!("storage deposits {:?}", analytics.storage_deposits);
+        assert_eq!(analytics.storage_deposits, cmp_analytics.storage_deposits);
+
+        // println!("claimed tokens {:?}", analytics.claimed_tokens);
+        assert_eq!(analytics.claimed_tokens, cmp_analytics.claimed_tokens);
+
+        // println!("payload activity {:?}", analytics.payload_activity);
+        assert_eq!(analytics.payload_activity, cmp_analytics.payload_activity);
+
+        // println!("transaction activity {:?}", analytics.transaction_activity);
+        assert_eq!(analytics.transaction_activity, cmp_analytics.transaction_activity);
+
+        // println!("unlock conditions {:?}", analytics.unlock_conditions);
+        assert_eq!(analytics.unlock_conditions, cmp_analytics.unlock_conditions);
+
+        // println!("protocol params {:?}", analytics.protocol_params);
+        assert_eq!(analytics.protocol_params, cmp_analytics.protocol_params);
 
         // This acts as a checkpoint for the syncing and has to be done last, after everything else completed.
-        self.handle_milestone(
-            inx,
-            milestone_index,
-            // Panic: Cannot fail as all other references are held by the tasks and we await them above.
-            Arc::try_unwrap(analytics).unwrap().into_inner().finish(),
-        )
-        .await?;
+        self.handle_milestone(inx, milestone_index, analytics).await?;
 
         let elapsed = start_time.elapsed();
 
@@ -342,7 +402,7 @@ impl InxWorker {
     async fn handle_protocol_params(
         &self,
         inx: &mut Inx,
-        analytics: &Arc<Mutex<AnalyticsProcessor>>,
+        analytics: &Arc<Mutex<(AnalyticsProcessor, AnalyticsProcessor)>>,
         milestone_index: MilestoneIndex,
     ) -> Result<(), InxWorkerError> {
         let parameters = inx
@@ -361,7 +421,15 @@ impl InxWorker {
             .map(|d| d.parameters);
 
         if Some(&params) != last_params.as_ref() {
-            analytics.lock().await.process_protocol_params(params.clone());
+            let mut guard = analytics
+                .lock()
+                .await;
+
+            (*guard).0.process_protocol_params(params.clone());
+            (*guard).1.process_protocol_params(params.clone());
+
+            drop(guard);
+
         }
 
         self.db
@@ -377,7 +445,7 @@ impl InxWorker {
         &mut self,
         inx: &mut Inx,
         milestone_index: MilestoneIndex,
-        analytics: Analytics,
+        analytics: AnalyticsState,
     ) -> Result<(), InxWorkerError> {
         let milestone = inx.read_milestone(milestone_index.0.into()).await?;
 
@@ -419,7 +487,7 @@ impl InxWorker {
     async fn handle_cone_stream(
         &mut self,
         inx: &mut Inx,
-        analytics: &Arc<Mutex<AnalyticsProcessor>>,
+        analytics: &Arc<Mutex<(AnalyticsProcessor, AnalyticsProcessor)>>,
         milestone_index: MilestoneIndex,
     ) -> Result<(), InxWorkerError> {
         let cone_stream = inx.read_milestone_cone(milestone_index.0.into()).await?;
@@ -460,10 +528,15 @@ impl InxWorker {
                             .insert_treasury_payloads(payloads)
                             .await?;
                     }
-                    analytics
+                    let mut guard = analytics
                         .lock()
-                        .await
-                        .process_blocks(batch.iter().map(|(_, block, _, metadata)| (block, metadata)));
+                        .await;
+
+                    (*guard).0.process_blocks(batch.iter().map(|(_, block, _, metadata)| (block, metadata)));
+                    (*guard).1.process_blocks(batch.iter().map(|(_, block, _, metadata)| (block, metadata)));
+
+                    drop(guard);
+
                     db.collection::<BlockCollection>()
                         .insert_blocks_with_metadata(batch)
                         .await?;
