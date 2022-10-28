@@ -3,6 +3,8 @@
 ############################
 FROM lukemathwalker/cargo-chef:latest-rust-buster AS chef
 
+ARG features
+
 LABEL org.label-schema.description="IOTA permanode implemented as an IOTA Node Extension (INX)."
 LABEL org.label-schema.name="iotaledger/inx-chronicle"
 LABEL org.label-schema.schema-version="1.0"
@@ -21,7 +23,7 @@ COPY --from=planner /inx-chronicle/recipe.json recipe.json
 
 RUN cargo chef cook --profile production --recipe-path recipe.json
 COPY . .
-RUN cargo build --profile production --bin inx-chronicle
+RUN cargo build --profile production --bin inx-chronicle --features $features
 
 ############################
 # Image
