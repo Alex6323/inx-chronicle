@@ -138,8 +138,19 @@ async fn validate_proof(
 
     // Validate the given milestone.
     let public_key_count = node_configuration.milestone_public_key_count as usize;
+    println!("public_key_count: {}", public_key_count);
     let key_ranges = node_configuration.milestone_key_ranges;
+    for key_range in key_ranges.iter() {
+        println!("key_range: {:?}", key_range);
+    }
     let applicable_public_keys = get_valid_public_keys_for_index(key_ranges, milestone_index);
+    for pub_key in applicable_public_keys.iter() {
+        println!("applicable public key: {}", pub_key);
+    }
+    let signatures = milestone.signatures();
+    for sig in signatures {
+        println!("signature: {:?}", sig);
+    }
 
     if let Err(e) = milestone.validate(&applicable_public_keys, public_key_count) {
         Err(ApiError::PoI(PoIError::InvalidMilestone(e)))
