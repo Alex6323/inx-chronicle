@@ -343,7 +343,7 @@ impl BlockCollection {
 
         self.aggregate(
             vec![
-                doc! { "$match": { "$and": queries } },
+                doc! { "$match": queries },
                 doc! { "$sort": sort },
                 doc! { "$limit": page_size as i64 },
                 doc! { "$replaceWith": {
