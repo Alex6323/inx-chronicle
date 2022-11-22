@@ -434,6 +434,8 @@ impl<B: Send> FromRequest<B> for BlocksByMilestoneIdPagination {
             .map_err(RequestError::from)?;
         let Extension(config) = Extension::<ApiData>::from_request(req).await?;
 
+        println!("{}", query.milestone_id);
+
         let milestone_id = MilestoneId::from_str(&query.milestone_id)?;
 
         let sort = query
