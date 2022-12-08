@@ -9,7 +9,8 @@ use crate::db::influxdb::InfluxDb;
 impl InfluxDb {
     /// TODO: Rename
     pub async fn insert_measurement(&self, measurement: Measurement) -> Result<(), influxdb::Error> {
-        self.analytics().query(influxdb::WriteQuery::from(measurement)).await?;
+        let s = self.analytics().query(influxdb::WriteQuery::from(measurement)).await?;
+        println!("insert_measurement results: {s}");
         Ok(())
     }
 }
