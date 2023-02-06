@@ -12,7 +12,7 @@ use chronicle::{
             ApplicationStateCollection, BlockCollection, ConfigurationUpdateCollection, LedgerUpdateCollection,
             MilestoneCollection, OutputCollection, ProtocolUpdateCollection, TreasuryCollection,
         },
-        MongoDb,
+        MongoDb, MongoDbCollectionExt,
     },
     inx::{BlockWithMetadataMessage, Inx, InxError, LedgerUpdateMessage, MarkerMessage},
     types::{
@@ -265,7 +265,21 @@ impl InxWorker {
                     .await?;
             }
         } else {
-            self.db.clear().await?;
+            // self.db.clear().await?;
+            self.db
+                .collection::<OutputCollection>().drop().await?;
+            self.db
+                .collection::<BlockCollection>().drop().await?;
+            self.db
+                .collection::<MilestoneCollection>().drop().await?;
+            self.db
+                .collection::<LedgerUpdateCollection>().drop().await?;
+            self.db
+                .collection::<ConfigurationUpdateCollection>().drop().await?;
+            self.db
+                .collection::<TreasuryCollection>().drop().await?;
+
+
             info!("Reading unspent outputs.");
             let unspent_output_stream = inx
                 .read_unspent_outputs()

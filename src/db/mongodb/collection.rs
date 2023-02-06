@@ -177,6 +177,12 @@ pub trait MongoDbCollectionExt: MongoDbCollection {
             .await
             .map(|count| count as usize)
     }
+
+    /// Drops the collection.
+    async fn drop(&self) -> Result<(), Error> {
+        self.collection().drop(None).await
+    }
+
 }
 impl<T: MongoDbCollection> MongoDbCollectionExt for T {}
 
