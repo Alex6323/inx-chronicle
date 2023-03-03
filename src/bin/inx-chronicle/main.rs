@@ -3,6 +3,10 @@
 
 //! Module that holds the entry point of the Chronicle application.
 
+#[cfg(not(target_env = "msvc"))]
+#[global_allocator]
+static GLOBAL: tikv_jemallocator::Jemalloc = tikv_jemallocator::Jemalloc;
+
 /// Module containing the API.
 #[cfg(feature = "api")]
 mod api;
