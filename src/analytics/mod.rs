@@ -4,12 +4,15 @@
 //! Various analytics that give insight into the usage of the tangle.
 
 use futures::{prelude::stream::StreamExt, TryStreamExt};
-use iota_sdk::types::block::{
-    output::OutputId,
-    payload::SignedTransactionPayload,
-    protocol::ProtocolParameters,
-    slot::{EpochIndex, SlotCommitment, SlotIndex},
-    Block,
+use iota_sdk::types::{
+    api::core::TransactionState,
+    block::{
+        output::OutputId,
+        payload::SignedTransactionPayload,
+        protocol::ProtocolParameters,
+        slot::{EpochIndex, SlotCommitment, SlotIndex},
+        Block,
+    },
 };
 use thiserror::Error;
 
@@ -324,7 +327,9 @@ impl<'a, I: InputSource> Slot<'a, I> {
                 .and_then(|p| p.as_signed_transaction_opt())
                 .zip(data.transaction)
             {
-                self.handle_transaction(analytics, payload, &metadata, &ctx).await?;
+                if metadata.transaction_state == Some(TransactionState::Finalized) {
+                    self.handle_transaction(analytics, payload, &metadata, &ctx).await?;
+                }
             }
             self.handle_block(analytics, &data.block, &ctx).await?;
         }
