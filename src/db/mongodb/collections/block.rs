@@ -340,8 +340,8 @@ impl BlockCollection {
         sort: SortOrder,
     ) -> Result<BlocksBySlotResult<impl Stream<Item = Result<BlockResult, DbError>>>, DbError> {
         let (sort, cmp) = match sort {
-            SortOrder::Newest => (doc! {"slot_index": -1 }, "$lte"),
-            SortOrder::Oldest => (doc! {"slot_index": 1 }, "$gte"),
+            SortOrder::Newest => (doc! { "_id": -1 }, "$lte"),
+            SortOrder::Oldest => (doc! { "_id": 1 }, "$gte"),
         };
 
         let mut queries = vec![doc! { "slot_index": slot_index }];
