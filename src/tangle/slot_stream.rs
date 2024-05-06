@@ -7,7 +7,10 @@ use std::{
 };
 
 use futures::{stream::BoxStream, Stream, TryStreamExt};
-use iota_sdk::types::block::slot::{SlotCommitment, SlotCommitmentId, SlotIndex};
+use iota_sdk::types::{
+    api::core::BlockState,
+    block::slot::{SlotCommitment, SlotCommitmentId, SlotIndex},
+};
 
 use super::InputSource;
 use crate::model::{
@@ -43,25 +46,32 @@ impl<'a, I: InputSource> Slot<'a, I> {
     pub async fn accepted_block_stream(
         &self,
     ) -> Result<impl Stream<Item = Result<BlockWithTransactionMetadata, I::Error>> + '_, I::Error> {
-        Ok(self.source.accepted_blocks(self.index()).await?.and_then(|res| async {
-            let transaction = if let Some(transaction_id) = res
-                .block
-                .inner()
-                .body()
-                .as_basic_opt()
-                .and_then(|body| body.payload())
-                .and_then(|p| p.as_signed_transaction_opt())
-                .map(|txn| txn.transaction().id())
-            {
-                Some(self.source.transaction_metadata(transaction_id).await?)
-            } else {
-                None
-            };
-            Ok(BlockWithTransactionMetadata {
-                transaction,
-                block: res,
+        Ok(self
+            .source
+            .accepted_blocks(self.index())
+            .await?
+            .try_filter(|block_with_metadata| {
+                futures::future::ready(block_with_metadata.metadata.block_state == Some(BlockState::Finalized))
             })
-        }))
+            .and_then(|res| async {
+                let transaction = if let Some(transaction_id) = res
+                    .block
+                    .inner()
+                    .body()
+                    .as_basic_opt()
+                    .and_then(|body| body.payload())
+                    .and_then(|p| p.as_signed_transaction_opt())
+                    .map(|txn| txn.transaction().id())
+                {
+                    Some(self.source.transaction_metadata(transaction_id).await?)
+                } else {
+                    None
+                };
+                Ok(BlockWithTransactionMetadata {
+                    transaction,
+                    block: res,
+                })
+            }))
     }
 
     /// Returns the ledger update store.
