@@ -333,7 +333,20 @@ async fn commitment(
     Path(commitment_id): Path<SlotCommitmentId>,
     headers: HeaderMap,
 ) -> ApiResult<IotaRawResponse<SlotCommitment>> {
-    commitment_by_index(database, Path(commitment_id.slot_index()), headers).await
+    let slot_commitment = database
+        .collection::<CommittedSlotCollection>()
+        .get_commitment(commitment_id.slot_index())
+        .await?
+        .ok_or(MissingError::NoResults)?;
+
+    if slot_commitment.commitment_id != commitment_id {
+        return Err(ApiError::from(MissingError::NoResults));
+    }
+
+    if matches!(headers.get(axum::http::header::ACCEPT), Some(header) if header == BYTE_CONTENT_HEADER) {
+        return Ok(IotaRawResponse::Raw(slot_commitment.commitment.data()));
+    }
+    Ok(IotaRawResponse::Json(slot_commitment.commitment.into_inner()))
 }
 
 async fn commitment_by_index(
