@@ -30,8 +30,8 @@ pub trait InputSource: Send + Sync {
         range: impl RangeBounds<SlotIndex> + Send,
     ) -> Result<BoxStream<Result<Commitment, Self::Error>>, Self::Error>;
 
-    /// A stream of accepted blocks for a given slot index.
-    async fn accepted_blocks(
+    /// A stream of finalized blocks for a given slot index.
+    async fn finalized_blocks(
         &self,
         index: SlotIndex,
     ) -> Result<BoxStream<Result<BlockWithMetadata, Self::Error>>, Self::Error>;
@@ -41,4 +41,7 @@ pub trait InputSource: Send + Sync {
 
     /// Retrieves the updates to the ledger for a given range of slots.
     async fn ledger_updates(&self, index: SlotIndex) -> Result<LedgerUpdateStore, Self::Error>;
+
+    /// Retrieves the latest finalized slot index.
+    async fn latest_finalized_slot_index(&self) -> Result<SlotIndex, Self::Error>;
 }

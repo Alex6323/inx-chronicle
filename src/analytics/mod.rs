@@ -314,7 +314,7 @@ impl<'a, I: InputSource> Slot<'a, I> {
             db,
         };
 
-        let mut block_stream = self.accepted_block_stream().await?.boxed();
+        let mut block_stream = self.finalized_block_stream().await?.boxed();
 
         while let Some(data) = block_stream.try_next().await? {
             if let Some((payload, metadata)) = data

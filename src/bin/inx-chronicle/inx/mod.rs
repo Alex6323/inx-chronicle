@@ -327,7 +327,7 @@ impl InxWorker {
 
     #[instrument(skip_all, err, level = "trace")]
     async fn handle_accepted_blocks<'a>(&mut self, slot: &Slot<'a, Inx>) -> Result<()> {
-        let blocks_stream = slot.accepted_block_stream().await?;
+        let blocks_stream = slot.finalized_block_stream().await?;
 
         let mut tasks = blocks_stream
             .try_chunks(INSERT_BATCH_SIZE)

@@ -25,7 +25,7 @@ pub struct Slot<'a, I: InputSource> {
 }
 
 impl<'a, I: InputSource> Slot<'a, I> {
-    /// Get the slot's index.
+    /// Get the slot index.
     pub fn index(&self) -> SlotIndex {
         self.commitment.commitment_id.slot_index()
     }
@@ -39,22 +39,29 @@ impl<'a, I: InputSource> Slot<'a, I> {
     pub fn commitment(&self) -> &Raw<SlotCommitment> {
         &self.commitment.commitment
     }
+
+    /// Check whether the slot has been finalized.
+    pub async fn is_finalized(&self) -> bool {
+        // TODO: unwrap
+        self.commitment.commitment_id.slot_index() >= self.source.latest_finalized_slot_index().await.unwrap()
+    }
 }
 
 impl<'a, I: InputSource> Slot<'a, I> {
     /// Returns the accepted blocks of a slot.
-    pub async fn accepted_block_stream(
+    pub async fn finalized_block_stream(
         &self,
     ) -> Result<impl Stream<Item = Result<BlockWithTransactionMetadata, I::Error>> + '_, I::Error> {
+        while !self.is_finalized().await {
+            tokio::time::sleep(core::time::Duration::from_millis(100)).await;
+        }
+
         Ok(self
             .source
-            .accepted_blocks(self.index())
+            .finalized_blocks(self.index())
             .await?
             .try_filter(|block_with_metadata| {
-                futures::future::ready(
-                    block_with_metadata.metadata.block_state == Some(BlockState::Confirmed)
-                        || block_with_metadata.metadata.block_state == Some(BlockState::Finalized),
-                )
+                futures::future::ready(block_with_metadata.metadata.block_state == Some(BlockState::Finalized))
             })
             .and_then(|res| async {
                 let transaction = if let Some(transaction_id) = res

@@ -68,7 +68,7 @@ impl InputSource for MongoDb {
         )))
     }
 
-    async fn accepted_blocks(
+    async fn finalized_blocks(
         &self,
         index: SlotIndex,
     ) -> Result<BoxStream<Result<BlockWithMetadata, Self::Error>>, Self::Error> {
@@ -103,5 +103,9 @@ impl InputSource for MongoDb {
             .await?;
 
         Ok(LedgerUpdateStore::init(consumed, created))
+    }
+
+    async fn latest_finalized_slot_index(&self) -> Result<SlotIndex, Self::Error> {
+        todo!()
     }
 }
