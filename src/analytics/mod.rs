@@ -316,6 +316,8 @@ impl<'a, I: InputSource> Slot<'a, I> {
 
         let mut block_stream = self.finalized_block_stream().await?.boxed();
 
+        let mut counter = 0;
+
         while let Some(data) = block_stream.try_next().await? {
             if let Some((payload, metadata)) = data
                 .block
@@ -332,7 +334,10 @@ impl<'a, I: InputSource> Slot<'a, I> {
                 }
             }
             self.handle_block(analytics, &data.block, &ctx).await?;
+            counter += 1;
         }
+
+        println!("analytics blocks: {counter}");
 
         influxdb
             .insert_measurement((analytics as &mut dyn DynAnalytics).take_measurement(&ctx).await?)

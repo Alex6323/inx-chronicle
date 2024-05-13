@@ -25,7 +25,7 @@ pub struct Slot<'a, I: InputSource> {
 }
 
 impl<'a, I: InputSource> Slot<'a, I> {
-    /// Get the slot index.
+    /// Get the slot's index.
     pub fn index(&self) -> SlotIndex {
         self.commitment.commitment_id.slot_index()
     }
@@ -53,12 +53,14 @@ impl<'a, I: InputSource> Slot<'a, I> {
         &self,
     ) -> Result<impl Stream<Item = Result<BlockWithTransactionMetadata, I::Error>> + '_, I::Error> {
         while !self.is_finalized().await {
+            println!("not finalized: {}", self.index());
             tokio::time::sleep(core::time::Duration::from_millis(100)).await;
         }
+        println!("finalized: {}", self.index());
 
         Ok(self
             .source
-            .finalized_blocks(self.index())
+            .accepted_blocks(self.index())
             .await?
             .try_filter(|block_with_metadata| {
                 futures::future::ready(block_with_metadata.metadata.block_state == Some(BlockState::Finalized))

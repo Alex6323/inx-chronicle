@@ -46,7 +46,7 @@ impl InputSource for BTreeMap<SlotIndex, InMemoryData> {
         )))
     }
 
-    async fn finalized_blocks(
+    async fn accepted_blocks(
         &self,
         index: SlotIndex,
     ) -> Result<BoxStream<Result<BlockWithMetadata, Self::Error>>, Self::Error> {

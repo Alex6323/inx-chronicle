@@ -109,9 +109,9 @@ impl InxWorker {
         };
 
         debug!(
-            "The node has a pruning epoch index of `{}` and a latest confirmed slot index of `{}`.",
+            "The node has a pruning epoch index of `{}` and a latest finalized slot index of `{}`.",
             node_status.pruning_epoch,
-            node_status.latest_commitment.commitment_id.slot_index()
+            node_status.latest_finalized_commitment.commitment_id.slot_index()
         );
 
         let mut node_configuration = inx.get_node_configuration().await?;
@@ -303,7 +303,7 @@ impl InxWorker {
         tracing::Span::current().record("created", slot.ledger_updates().created_outputs().len());
         tracing::Span::current().record("consumed", slot.ledger_updates().consumed_outputs().len());
 
-        self.handle_accepted_blocks(&slot).await?;
+        self.handle_finalized_blocks(&slot).await?;
 
         #[cfg(feature = "influx")]
         self.update_influx(
@@ -326,7 +326,16 @@ impl InxWorker {
     }
 
     #[instrument(skip_all, err, level = "trace")]
-    async fn handle_accepted_blocks<'a>(&mut self, slot: &Slot<'a, Inx>) -> Result<()> {
+    async fn handle_finalized_blocks<'a>(&mut self, slot: &Slot<'a, Inx>) -> Result<()> {
+        // let mut block_stream = slot.finalized_block_stream().await?.boxed();
+
+        // let mut counter = 0;
+        // while let Some(data) = block_stream.try_next().await? {
+        //     counter += 1;
+        // }
+
+        // println!("inx blocks: {counter}");
+
         let blocks_stream = slot.finalized_block_stream().await?;
 
         let mut tasks = blocks_stream

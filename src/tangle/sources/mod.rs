@@ -30,8 +30,8 @@ pub trait InputSource: Send + Sync {
         range: impl RangeBounds<SlotIndex> + Send,
     ) -> Result<BoxStream<Result<Commitment, Self::Error>>, Self::Error>;
 
-    /// A stream of finalized blocks for a given slot index.
-    async fn finalized_blocks(
+    /// A stream of (at least) accepted blocks for a given slot index.
+    async fn accepted_blocks(
         &self,
         index: SlotIndex,
     ) -> Result<BoxStream<Result<BlockWithMetadata, Self::Error>>, Self::Error>;
