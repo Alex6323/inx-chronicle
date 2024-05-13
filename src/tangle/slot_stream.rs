@@ -51,7 +51,10 @@ impl<'a, I: InputSource> Slot<'a, I> {
             .accepted_blocks(self.index())
             .await?
             .try_filter(|block_with_metadata| {
-                futures::future::ready(block_with_metadata.metadata.block_state == Some(BlockState::Finalized))
+                futures::future::ready(
+                    block_with_metadata.metadata.block_state == Some(BlockState::Confirmed)
+                        || block_with_metadata.metadata.block_state == Some(BlockState::Finalized),
+                )
             })
             .and_then(|res| async {
                 let transaction = if let Some(transaction_id) = res
